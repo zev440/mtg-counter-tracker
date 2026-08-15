@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#173b2a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>MTG Counter Tracker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main class="app-shell">
+  <header class="app-header">
+    <div>
+      <p class="eyebrow">Magic: The Gathering</p>
+      <h1>Counter Tracker</h1>
+    </div>
+    <button id="resetGameBtn" class="button button-danger button-small">Reset</button>
+  </header>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <h2>Battlefield</h2>
+      <button id="addCreatureBtn" class="button button-primary">+ Creature</button>
+    </div>
+    <div id="battlefield" class="battlefield"></div>
+    <div id="emptyBattlefield" class="empty-state">Add a creature to start tracking the battlefield.</div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading"><h2>Game Actions</h2></div>
+    <div class="action-grid">
+      <button id="addCounterBtn" class="button action-button" disabled>+1 Counter</button>
+      <button id="proliferateBtn" class="button action-button" disabled>Proliferate</button>
+      <button id="doubleOneBtn" class="button action-button" disabled>Double One</button>
+      <button id="doubleAllBtn" class="button action-button" disabled>Double All</button>
+    </div>
+
+    <div class="repeat-row">
+      <label class="checkbox-row">
+        <input id="repeatDoubleToggle" type="checkbox">
+        <span>Repeat Double All</span>
+      </label>
+      <label id="repeatCountWrap" class="repeat-count hidden">
+        Times
+        <input id="repeatDoubleCount" type="number" min="1" max="100" step="1" value="2">
+      </label>
+    </div>
+
+    <p class="help-text">
+      Select a creature for +1 Counter and Double One. Double All can optionally be repeated an integer number of times.
+      Each repetition is a separate counter-placement event.
+    </p>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <div>
+        <h2>Replacement Effects</h2>
+        <p class="section-subtitle">Effects are ordered to maximize the counters added.</p>
+      </div>
+      <button id="addEffectBtn" class="button button-primary">+ Effect</button>
+    </div>
+    <div id="effectsList" class="effects-list"></div>
+    <div id="emptyEffects" class="empty-state">No replacement effects. Add one to begin.</div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-heading">
+      <h2>History</h2>
+      <button id="undoBtn" class="button button-secondary" disabled>↶ Undo</button>
+    </div>
+    <div id="history" class="history"></div>
+    <div id="emptyHistory" class="empty-state">No actions yet.</div>
+  </section>
+</main>
+
+<div id="creatureModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <div class="modal-heading">
+      <h2>Add Creature</h2>
+      <button class="icon-button close-modal" data-modal="creatureModal">×</button>
+    </div>
+    <form id="creatureForm">
+      <label>Creature name
+        <input id="creatureName" type="text" required maxlength="60" placeholder="Custom name">
+      </label>
+      <div class="form-row">
+        <label>Starting +1/+1 counters
+          <input id="creatureCounters" type="number" min="0" step="1" value="0">
+        </label>
+        <label>Base power
+          <input id="creaturePower" type="number" step="1" value="0">
+        </label>
+        <label>Base toughness
+          <input id="creatureToughness" type="number" step="1" value="0">
+        </label>
+      </div>
+      <label class="checkbox-row">
+        <input id="adamantoiseMode" type="checkbox">
+        <span>Track power separately and damage marked</span>
+      </label>
+      <div id="adamantoiseFields" class="special-fields hidden">
+        <label>Current power
+          <input id="adamantoisePower" type="number" step="1" value="0">
+        </label>
+        <p class="help-text">Use this for creatures whose power should be tracked separately. Damage is manually added and cleared.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="button button-secondary close-modal" data-modal="creatureModal">Cancel</button>
+        <button type="submit" class="button button-primary">Add Creature</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="effectModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <div class="modal-heading">
+      <h2>Add Replacement Effect</h2>
+      <button class="icon-button close-modal" data-modal="effectModal">×</button>
+    </div>
+    <form id="effectForm">
+      <label>Effect name
+        <input id="effectName" type="text" required maxlength="60" placeholder="Custom name">
+      </label>
+      <label>Effect type
+        <select id="effectType">
+          <option value="add">Add a fixed number</option>
+          <option value="multiply">Multiply</option>
+        </select>
+      </label>
+      <label>Amount
+        <input id="effectAmount" type="number" step="any" value="1" required>
+      </label>
+      <p id="effectExplanation" class="help-text"></p>
+      <div class="modal-actions">
+        <button type="button" class="button button-secondary close-modal" data-modal="effectModal">Cancel</button>
+        <button type="submit" class="button button-primary">Add Effect</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="damageModal" class="modal hidden" role="dialog" aria-modal="true">
+  <div class="modal-card">
+    <div class="modal-heading">
+      <h2>Add Damage</h2>
+      <button class="icon-button close-modal" data-modal="damageModal">×</button>
+    </div>
+    <form id="damageForm">
+      <input id="damageCreatureId" type="hidden">
+      <label>Damage to add
+        <input id="damageAmount" type="number" min="0" step="1" value="1" required>
+      </label>
+      <div class="quick-buttons">
+        <button type="button" class="button button-secondary damage-preset" data-value="1">+1</button>
+        <button type="button" class="button button-secondary damage-preset" data-value="3">+3</button>
+        <button type="button" class="button button-secondary damage-preset" data-value="5">+5</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="button button-secondary close-modal" data-modal="damageModal">Cancel</button>
+        <button type="submit" class="button button-primary">Apply Damage</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="messageToast" class="toast hidden" role="status"></div>
+<script src="script.js"></script>
+</body>
+</html>
